@@ -612,6 +612,27 @@
 
   .hint { margin: 0; font-size: 12.5px; line-height: 1.55; color: var(--ink-soft); }
 
+  /* ── Слайд с фотографией ─────────────────── */
+
+  .slide.withpic .pane {
+    flex-direction: row;
+    align-items: stretch;
+    gap: calc(4 * var(--u));
+  }
+
+  .slide.withpic .body { min-width: 0; }
+
+  .shot {
+    flex: 0 0 40%;
+    align-self: stretch;
+    /* Без этого своя ширина картинки перебивает заданные 40% */
+    min-width: 0;
+    min-height: 0;
+    object-fit: cover;
+    border-radius: calc(1.6 * var(--u));
+    background: var(--card);
+  }
+
   /* ── Режим правки ────────────────────────── */
 
   [contenteditable="true"] {
@@ -704,6 +725,9 @@
     <span class="counter"><span id="now">1</span> / 74</span>
     <button type="button" id="edit" aria-pressed="false">Править</button>
     <button type="button" id="mark" hidden>Маркер</button>
+    <button type="button" id="pic" hidden>Фото</button>
+    <button type="button" id="pic-drop" hidden>Убрать фото</button>
+    <input type="file" id="pic-file" accept="image/*" hidden>
     <button type="button" id="reset" hidden>Сбросить правки</button>
     <button type="button" id="notes-toggle" aria-pressed="true">Заметки</button>
     <button type="button" id="full">Показ</button>
@@ -1144,7 +1168,16 @@
   })();
 
   const store = JSON.parse(shelf?.getItem(KEY) || "{}");
-  const save = () => shelf?.setItem(KEY, JSON.stringify(store));
+
+  function save() {
+    try {
+      shelf?.setItem(KEY, JSON.stringify(store));
+    } catch {
+      document.getElementById("hint").textContent =
+        "Правки перестали сохраняться: в браузере закончилось место — обычно из-за фотографий. " +
+        "Уберите лишние фото или пришлите их мне, я вставлю их в саму презентацию.";
+    }
+  }
 
   const EDITABLE = [
     ".eyebrow", ".stamp", "h2", ".sub", ".pills li", ".pairs .from", ".pairs .to",
@@ -1162,6 +1195,7 @@
     const pane = slide.querySelector(".pane");
     pane.innerHTML = saved;
     pane.querySelectorAll("[contenteditable]").forEach((el) => el.removeAttribute("contenteditable"));
+    if (store["c" + i]) slide.className = store["c" + i];
   });
 
   S.forEach((s, i) => {
@@ -1213,7 +1247,12 @@
     nBody.textContent = s.note || "";
     nDir.hidden = !s.dir;
     nDir.textContent = s.dir || "";
+    updatePic();
   }
+
+  // Пока идёт плавная прокрутка, промежуточные события скролла
+  // не должны сбивать номер выбранного слайда
+  let navigating = 0;
 
   function goTo(i) {
     i = Math.min(slides.length - 1, Math.max(0, i));
@@ -1221,6 +1260,8 @@
       slides.forEach((sl, k) => sl.classList.toggle("current", k === i));
       fit();
     } else {
+      clearTimeout(navigating);
+      navigating = setTimeout(() => { navigating = 0; }, 700);
       slides[i].scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
     }
     show(i);
@@ -1232,8 +1273,14 @@
   document.querySelector('[data-nav="next"]').addEventListener("click", () => go(1));
 
   deck.addEventListener("scroll", () => {
-    if (!showing()) show(current());
+    if (!showing() && !navigating) show(current());
   }, { passive: true });
+
+  deck.addEventListener("scrollend", () => {
+    clearTimeout(navigating);
+    navigating = 0;
+    if (!showing()) show(current());
+  });
 
   jump.addEventListener("change", () => goTo(Number(jump.value)));
 
@@ -1274,6 +1321,8 @@
     editBtn.setAttribute("aria-pressed", String(on));
     markBtn.hidden = !on;
     resetBtn.hidden = !on;
+    picBtn.hidden = !on;
+    updatePic();
     deck.querySelectorAll(EDITABLE).forEach((el) => {
       if (on) el.setAttribute("contenteditable", "true");
       else el.removeAttribute("contenteditable");
@@ -1286,16 +1335,22 @@
 
   // Слайд пересчитываем после правки, чтобы текст не вылез за край
   let pending = 0;
-  deck.addEventListener("input", (e) => {
-    const slide = e.target.closest(".slide");
-    if (!slide) return;
-    const i = [...deck.querySelectorAll(".slide")].indexOf(slide);
+
+  function persist(slide) {
+    const i = slides.indexOf(slide);
+    if (i < 0) return;
     const pane = slide.querySelector(".pane");
     const clone = pane.cloneNode(true);
     clone.querySelectorAll("[contenteditable]").forEach((el) => el.removeAttribute("contenteditable"));
     store["s" + i] = clone.innerHTML;
+    store["c" + i] = slide.className.replace(/\bcurrent\b/, "").trim();
     clearTimeout(pending);
     pending = setTimeout(() => { save(); fit(); }, 400);
+  }
+
+  deck.addEventListener("input", (e) => {
+    const slide = e.target.closest(".slide");
+    if (slide) persist(slide);
   });
 
   nBody.addEventListener("input", () => {
@@ -1338,6 +1393,62 @@
     location.reload();
   });
 
+  // ── Фотография на слайде ──────────────────
+
+  const picBtn = document.getElementById("pic");
+  const picDrop = document.getElementById("pic-drop");
+  const picFile = document.getElementById("pic-file");
+
+  // Уменьшаем до 1400 px и пересобираем в JPEG: снимок с телефона
+  // иначе занял бы всё место, отведённое браузером под правки
+  async function shrink(file, max = 1400, quality = 0.8) {
+    const bitmap = await createImageBitmap(file);
+    const k = Math.min(1, max / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(bitmap.width * k);
+    canvas.height = Math.round(bitmap.height * k);
+    canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close?.();
+    return canvas.toDataURL("image/jpeg", quality);
+  }
+
+  picBtn.addEventListener("click", () => picFile.click());
+
+  picFile.addEventListener("change", async () => {
+    const file = picFile.files?.[0];
+    picFile.value = "";
+    if (!file) return;
+    const slide = slides[shown]; // именно выбранный слайд, а не позиция прокрутки
+    let img = slide.querySelector("img.shot");
+    if (!img) {
+      img = document.createElement("img");
+      img.className = "shot";
+      img.alt = "Фотография на слайде";
+      slide.querySelector(".pane").appendChild(img);
+    }
+    img.src = await shrink(file);
+    slide.classList.add("withpic");
+    await img.decode().catch(() => {});
+    persist(slide);
+    fit();
+    updatePic();
+  });
+
+  picDrop.addEventListener("click", () => {
+    const slide = slides[shown];
+    slide.querySelector("img.shot")?.remove();
+    slide.classList.remove("withpic");
+    persist(slide);
+    fit();
+    updatePic();
+  });
+
+  function updatePic() {
+    const has = !!slides[shown]?.querySelector("img.shot");
+    picBtn.textContent = has ? "Заменить фото" : "Фото";
+    picDrop.hidden = !editing || !has;
+  }
+
   // В публичной версии заметки спикера и пометки команде не показываем
   const SHOW_NOTES = false;
 
@@ -1350,6 +1461,9 @@
     editBtn.remove();
     markBtn.remove();
     resetBtn.remove();
+    picBtn.remove();
+    picDrop.remove();
+    picFile.remove();
     document.getElementById("hint").textContent =
       "Листайте стрелками, кнопками или списком слайдов. «Показ» разворачивает слайд на всё окно: листать стрелками, пробелом или кликом, выход по Esc. «PDF» сохраняет все слайды страницами 1280×720 — в диалоге печати включите фоновую графику.";
   }
