@@ -728,6 +728,9 @@
     <button type="button" id="pic" hidden>Фото</button>
     <button type="button" id="pic-drop" hidden>Убрать фото</button>
     <input type="file" id="pic-file" accept="image/*" hidden>
+    <button type="button" id="save-edits" hidden>Сохранить правки в файл</button>
+    <button type="button" id="load-edits" hidden>Загрузить правки</button>
+    <input type="file" id="load-file" accept="application/json,.json" hidden>
     <button type="button" id="reset" hidden>Сбросить правки</button>
     <button type="button" id="notes-toggle" aria-pressed="true">Заметки</button>
     <button type="button" id="full">Показ</button>
@@ -1322,6 +1325,8 @@
     markBtn.hidden = !on;
     resetBtn.hidden = !on;
     picBtn.hidden = !on;
+    saveEditsBtn.hidden = !on;
+    loadEditsBtn.hidden = !on;
     updatePic();
     deck.querySelectorAll(EDITABLE).forEach((el) => {
       if (on) el.setAttribute("contenteditable", "true");
@@ -1388,9 +1393,58 @@
     host.dispatchEvent(new Event("input", { bubbles: true }));
   });
 
+  // ── Правки: копия в файл, загрузка из файла ──
+
+  const saveEditsBtn = document.getElementById("save-edits");
+  const loadEditsBtn = document.getElementById("load-edits");
+  const loadFile = document.getElementById("load-file");
+
+  function downloadEdits(name) {
+    const blob = new Blob([JSON.stringify(store)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  }
+
+  saveEditsBtn.addEventListener("click", () => downloadEdits("правки-презентации.json"));
+
+  loadEditsBtn.addEventListener("click", () => loadFile.click());
+
+  loadFile.addEventListener("change", async () => {
+    const file = loadFile.files?.[0];
+    loadFile.value = "";
+    if (!file) return;
+    try {
+      const data = JSON.parse(await file.text());
+      Object.keys(store).forEach((k) => delete store[k]);
+      Object.assign(store, data);
+      save();
+      location.reload();
+    } catch {
+      document.getElementById("hint").textContent =
+        "Не удалось прочитать файл правок — выберите файл «правки-презентации.json», сохранённый из этой презентации.";
+    }
+  });
+
+  // Сброс: два нажатия и резервная копия — чтобы правки нельзя было потерять случайно
+  let resetArmed = 0;
+
   resetBtn.addEventListener("click", () => {
+    if (!resetArmed) {
+      resetBtn.textContent = "Точно сбросить?";
+      resetArmed = setTimeout(() => {
+        resetArmed = 0;
+        resetBtn.textContent = "Сбросить правки";
+      }, 5000);
+      return;
+    }
+    clearTimeout(resetArmed);
+    resetArmed = 0;
+    if (Object.keys(store).length) downloadEdits("правки-до-сброса.json");
     shelf?.removeItem(KEY);
-    location.reload();
+    setTimeout(() => location.reload(), 300);
   });
 
   // ── Фотография на слайде ──────────────────
@@ -1464,6 +1518,9 @@
     picBtn.remove();
     picDrop.remove();
     picFile.remove();
+    saveEditsBtn.remove();
+    loadEditsBtn.remove();
+    loadFile.remove();
     document.getElementById("hint").textContent =
       "Листайте стрелками, кнопками или списком слайдов. «Показ» разворачивает слайд на всё окно: листать стрелками, пробелом или кликом, выход по Esc. «PDF» сохраняет все слайды страницами 1280×720 — в диалоге печати включите фоновую графику.";
   }
