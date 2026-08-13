@@ -1693,6 +1693,7 @@
     save();
     fit();
     updatePic();
+    warnBackup();
   });
 
   // На слайде с заранее отведённым местом фото снимается,
@@ -1714,6 +1715,21 @@
     fit();
     updatePic();
   });
+
+  // Фото и правки живут в этом браузере: без копии в файл
+  // они пропадут вместе с историей или при чистке кэша
+  let warned = 0;
+
+  function warnBackup() {
+    clearTimeout(warned);
+    const hint = document.getElementById("hint");
+    hint.dataset.original = hint.dataset.original || hint.textContent;
+    hint.innerHTML = '<b>Фото сохранено только в этом браузере.</b> Нажмите «Сохранить правки в файл» — иначе они пропадут при чистке кэша или на другом компьютере. Или пришлите фото мне, и я вложу их в саму презентацию.';
+    saveEditsBtn.style.outline = "2px solid var(--label)";
+    warned = setTimeout(() => {
+      saveEditsBtn.style.outline = "";
+    }, 20000);
+  }
 
   function updatePic() {
     const has = !!slides[shown]?.querySelector("img.shot[src]");
