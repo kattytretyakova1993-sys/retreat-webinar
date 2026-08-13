@@ -807,6 +807,9 @@
     <span class="counter"><span id="now">1</span> / <span id="total">74</span></span>
     <button type="button" id="edit" aria-pressed="false">Править</button>
     <button type="button" id="mark" hidden>Маркер</button>
+    <button type="button" id="font-down" hidden title="Уменьшить шрифт на этом слайде">Шрифт −</button>
+    <button type="button" id="font-up" hidden title="Увеличить шрифт на этом слайде">Шрифт +</button>
+    <button type="button" id="font-auto" hidden title="Вернуть автоматический размер">Авто</button>
     <button type="button" id="pic" hidden>Фото</button>
     <button type="button" id="pic-drop" hidden>Убрать фото</button>
     <button type="button" id="drop-slide" hidden>Удалить слайд</button>
@@ -1461,6 +1464,13 @@
       const inner = pane.querySelector(".body");
       if (!inner) return;
 
+      // размер, выставленный вручную, автоподбор не трогает
+      const manual = store["fit:" + slide.dataset.id];
+      if (manual) {
+        pane.style.setProperty("--fit", String(manual));
+        return;
+      }
+
       const over = () =>
         inner.scrollHeight > inner.clientHeight + 1 || pane.scrollHeight > slide.clientHeight + 1;
 
@@ -1611,6 +1621,9 @@
     markBtn.hidden = !on;
     resetBtn.hidden = !on;
     picBtn.hidden = !on;
+    fontDown.hidden = !on;
+    fontUp.hidden = !on;
+    fontAuto.hidden = !on;
     saveEditsBtn.hidden = !on;
     saveDeckBtn.hidden = !on;
     loadEditsBtn.hidden = !on;
@@ -1782,6 +1795,39 @@
     return canvas.toDataURL("image/jpeg", quality);
   }
 
+  // ── Размер шрифта на слайде вручную ────────
+
+  const fontDown = document.getElementById("font-down");
+  const fontUp = document.getElementById("font-up");
+  const fontAuto = document.getElementById("font-auto");
+
+  function nudgeFont(step) {
+    const slide = slides[shown];
+    if (!slide) return;
+    const pane = slide.querySelector(".pane");
+    const now = Number(pane.style.getPropertyValue("--fit") || 1);
+    const next = Math.min(4, Math.max(0.4, Math.round((now + step) * 100) / 100));
+    pane.style.setProperty("--fit", String(next));
+    store["fit:" + slide.dataset.id] = next;
+    save();
+    document.getElementById("hint").textContent =
+      "Размер шрифта на этом слайде: " + Math.round(next * 100) + "% от базового. «Авто» вернёт автоматический подбор.";
+  }
+
+  fontDown.addEventListener("click", () => nudgeFont(-0.08));
+  fontUp.addEventListener("click", () => nudgeFont(0.08));
+
+  fontAuto.addEventListener("click", () => {
+    const slide = slides[shown];
+    if (!slide) return;
+    delete store["fit:" + slide.dataset.id];
+    save();
+    slide.querySelector(".pane").style.removeProperty("--fit");
+    fit();
+    document.getElementById("hint").textContent =
+      "Размер шрифта на этом слайде снова подбирается автоматически.";
+  });
+
   picBtn.addEventListener("click", () => picFile.click());
 
   picFile.addEventListener("change", async () => {
@@ -1927,6 +1973,9 @@
     markBtn.remove();
     resetBtn.remove();
     picBtn.remove();
+    fontDown.remove();
+    fontUp.remove();
+    fontAuto.remove();
     picDrop.remove();
     picFile.remove();
     saveEditsBtn.remove();
