@@ -1452,15 +1452,42 @@
   // Пропорции сохраняются, поэтому коэффициент верен
   // и для показа на весь экран, и для печати.
 
+  // Размер подбирается в обе стороны: текста много — ужимаем,
+  // мало — увеличиваем, чтобы слайд не выглядел полупустым
   function fit() {
     deck.querySelectorAll(".slide").forEach((slide) => {
       if (!slide.clientHeight) return; // спрятанные слайды не мерим
       const pane = slide.querySelector(".pane");
       const inner = pane.querySelector(".body");
+      if (!inner) return;
+
       const over = () =>
         inner.scrollHeight > inner.clientHeight + 1 || pane.scrollHeight > slide.clientHeight + 1;
+
+      // .body тянется на всю высоту, поэтому меряем сам контент
+      const contentHeight = () => {
+        const kids = [...inner.children];
+        if (!kids.length) return 0;
+        const last = kids[kids.length - 1];
+        return last.offsetTop + last.offsetHeight - kids[0].offsetTop;
+      };
+      const roomy = () => contentHeight() < inner.clientHeight * 0.82;
+
       let k = 1;
       pane.style.removeProperty("--fit");
+
+      if (!over() && roomy()) {
+        while (k < 1.7) {
+          const next = Math.round((k + 0.04) * 100) / 100;
+          pane.style.setProperty("--fit", String(next));
+          if (over() || !roomy()) {
+            pane.style.setProperty("--fit", String(k));
+            break;
+          }
+          k = next;
+        }
+      }
+
       while (over() && k > 0.6) {
         k = Math.round((k - 0.04) * 100) / 100;
         pane.style.setProperty("--fit", String(k));
