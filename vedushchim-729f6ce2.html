@@ -64,6 +64,15 @@
     flex-wrap: wrap;
   }
 
+  .bar.tools {
+    padding: 8px 10px;
+    border: 1px solid var(--hairline);
+    border-radius: 8px;
+    background: var(--ground);
+  }
+
+  .bar.tools[hidden] { display: none; }
+
   .bar .who {
     font-size: 14px;
     font-weight: 700;
@@ -733,6 +742,7 @@
 
   body.show { overflow: hidden; }
   body.show .bar,
+  body.show .bar.tools,
   body.show .notes,
   body.show .hint { display: none; }
 
@@ -781,7 +791,7 @@
   @media print {
     body { background: #fff; }
     .shell { max-width: none; padding: 0; gap: 0; }
-    .bar, .notes, .hint { display: none; }
+    .bar, .bar.tools, .notes, .hint { display: none; }
     [contenteditable] { outline: none !important; }
     .deck { display: block; overflow: visible; border: 0; }
     .slide {
@@ -806,6 +816,12 @@
     <button type="button" data-nav="next" aria-label="Вперёд">→</button>
     <span class="counter"><span id="now">1</span> / <span id="total">74</span></span>
     <button type="button" id="edit" aria-pressed="false">Править</button>
+    <button type="button" id="notes-toggle" aria-pressed="true">Заметки</button>
+    <button type="button" id="full">Показ</button>
+    <button type="button" id="pdf">PDF</button>
+  </div>
+
+  <div class="bar tools" id="tools" hidden>
     <button type="button" id="mark" hidden>Маркер</button>
     <button type="button" id="font-down" hidden title="Уменьшить шрифт на этом слайде">Шрифт −</button>
     <button type="button" id="font-up" hidden title="Увеличить шрифт на этом слайде">Шрифт +</button>
@@ -821,9 +837,6 @@
     <button type="button" id="load-edits" hidden>Загрузить правки</button>
     <input type="file" id="load-file" accept="application/json,.json" hidden>
     <button type="button" id="reset" hidden>Сбросить правки</button>
-    <button type="button" id="notes-toggle" aria-pressed="true">Заметки</button>
-    <button type="button" id="full">Показ</button>
-    <button type="button" id="pdf">PDF</button>
   </div>
 
   <div class="deck" id="deck" tabindex="0" aria-label="Слайды презентации"></div>
@@ -1433,6 +1446,71 @@
 
   // Фотографии живут отдельно от текста: тогда обновление
   // презентации не стирает вставленные снимки и наоборот
+  // Фотографии не помещаются в обычное хранилище браузера (лимит ~5 МБ),
+  // поэтому держим их в IndexedDB: там места в сотни раз больше
+  const PHOTOS = "pd-webinar-photos";
+
+  // Открытие с таймаутом: в некоторых режимах браузер не отвечает вовсе
+  function openPhotos() {
+    return Promise.race([
+      new Promise((resolve, reject) => {
+        let req;
+        try {
+          req = indexedDB.open(PHOTOS, 1);
+        } catch (e) {
+          reject(e);
+          return;
+        }
+        req.onupgradeneeded = () => req.result.createObjectStore("pics");
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error || new Error("хранилище недоступно"));
+        req.onblocked = () => reject(new Error("хранилище занято другой вкладкой"));
+      }),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("хранилище не ответило")), 3000)),
+    ]);
+  }
+
+  async function photoSet(id, dataUrl) {
+    const db = await openPhotos();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction("pics", "readwrite");
+      tx.objectStore("pics").put(dataUrl, id);
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  async function photoDelete(id) {
+    const db = await openPhotos();
+    await new Promise((resolve) => {
+      const tx = db.transaction("pics", "readwrite");
+      tx.objectStore("pics").delete(id);
+      tx.oncomplete = resolve;
+      tx.onerror = resolve;
+    });
+  }
+
+  async function photoAll() {
+    const db = await openPhotos();
+    return new Promise((resolve) => {
+      const out = {};
+      const tx = db.transaction("pics", "readonly");
+      const store = tx.objectStore("pics");
+      const req = store.openCursor();
+      req.onsuccess = () => {
+        const cur = req.result;
+        if (cur) {
+          out[cur.key] = cur.value;
+          cur.continue();
+        } else {
+          resolve(out);
+        }
+      };
+      req.onerror = () => resolve(out);
+    });
+  }
+
   function putPhoto(slide, dataUrl) {
     let slot = slide.querySelector(".slot");
     if (!slot) {
@@ -1446,10 +1524,42 @@
     slide.classList.add("withpic");
   }
 
-  deck.querySelectorAll(".slide").forEach((slide) => {
-    const saved = store["pic:" + slide.dataset.id];
-    if (saved) putPhoto(slide, saved);
-  });
+  async function restorePhotos() {
+    // переносим фото, сохранённые раньше в тесное хранилище
+    const legacy = Object.keys(store).filter((k) => k.startsWith("pic:"));
+    let movedAny = false;
+    for (const key of legacy) {
+      try {
+        await photoSet(key, store[key]);
+        delete store[key];
+        movedAny = true;
+      } catch {
+        break; // хранилище недоступно — оставляем фото там, где они лежат
+      }
+    }
+    if (movedAny) save();
+
+    let saved = {};
+    try {
+      saved = await photoAll();
+    } catch {
+      // IndexedDB недоступен — читаем из обычного хранилища
+      Object.keys(store).filter((k) => k.startsWith("pic:")).forEach((k) => {
+        saved[k] = store[k];
+      });
+    }
+
+    let count = 0;
+    deck.querySelectorAll(".slide").forEach((slide) => {
+      const data = saved["pic:" + slide.dataset.id];
+      if (data) {
+        putPhoto(slide, data);
+        count++;
+      }
+    });
+    if (count) fit();
+    return count;
+  }
 
   // ── Подгонка: ужимаем слайд, если текст не влез ──
   // Пропорции сохраняются, поэтому коэффициент верен
@@ -1620,6 +1730,7 @@
     editBtn.setAttribute("aria-pressed", String(on));
     markBtn.hidden = !on;
     resetBtn.hidden = !on;
+    document.getElementById("tools").hidden = !on;
     picBtn.hidden = !on;
     fontDown.hidden = !on;
     fontUp.hidden = !on;
@@ -1847,11 +1958,26 @@
     slot.removeAttribute("data-empty");
     slide.classList.add("withpic");
     await img.decode().catch(() => {});
-    store["pic:" + slide.dataset.id] = img.src;
-    save();
+    try {
+      await photoSet("pic:" + slide.dataset.id, img.src);
+      document.getElementById("hint").textContent =
+        "Фото сохранено. Оно останется на месте после обновления страницы.";
+    } catch (idbError) {
+      // запасной путь — обычное хранилище, его хватает на несколько фото
+      try {
+        store["pic:" + slide.dataset.id] = img.src;
+        shelf?.setItem(KEY, JSON.stringify(store));
+        document.getElementById("hint").textContent =
+          "Фото сохранено запасным способом: места хватает на несколько снимков. " +
+          "После вставки всех фото нажмите «Скачать презентацию с фото».";
+      } catch (e) {
+        document.getElementById("hint").innerHTML =
+          "<b>Фото не удалось сохранить:</b> " + (e && e.message ? e.message : "браузер отказал в записи") +
+          ". Нажмите «Скачать презентацию с фото», чтобы не потерять работу.";
+      }
+    }
     fit();
     updatePic();
-    warnBackup();
   });
 
   // На слайде с заранее отведённым местом фото снимается,
@@ -1868,8 +1994,7 @@
       slot.remove();
       slide.classList.remove("withpic");
     }
-    delete store["pic:" + slide.dataset.id];
-    save();
+    photoDelete("pic:" + slide.dataset.id).catch(() => {});
     fit();
     updatePic();
   });
@@ -1947,7 +2072,7 @@
       const box = document.createElement("div");
       box.innerHTML = store[key];
       const src = box.querySelector("img.shot")?.getAttribute("src");
-      if (src) store["pic:" + id] = src;
+      if (src) photoSet("pic:" + id, src).catch(() => {});
       delete store[key];
       delete store["c:" + id];
     });
@@ -2031,6 +2156,12 @@
   applyDeleted();
   show(0);
   fit();
+  restorePhotos().then((count) => {
+    if (count) {
+      document.getElementById("hint").textContent =
+        "Фотографий на слайдах: " + count + ". Они сохранены в этом браузере и не пропадут при обновлении страницы.";
+    }
+  });
   window.addEventListener("resize", fit);
   document.fonts?.ready.then(fit);
 </script>
