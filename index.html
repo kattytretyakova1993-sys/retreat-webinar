@@ -778,6 +778,8 @@
     <button type="button" id="mark" hidden>Маркер</button>
     <button type="button" id="pic" hidden>Фото</button>
     <button type="button" id="pic-drop" hidden>Убрать фото</button>
+    <button type="button" id="drop-slide" hidden>Удалить слайд</button>
+    <button type="button" id="restore-slides" hidden>Вернуть удалённые</button>
     <input type="file" id="pic-file" accept="image/*" hidden>
     <button type="button" id="save-edits" hidden>Сохранить правки в файл</button>
     <button type="button" id="load-edits" hidden>Загрузить правки</button>
@@ -842,7 +844,7 @@
       note: `` },
 
     { t: "big", eyebrow: "Что меняет ретрит",
-      h: `Одна группа и три дня подряд вместо <em>тридцати повторов одной мысли по часу</em>`, who: "Максим",
+      h: `На консультациях вы объясняете одно и то же тридцать раз. На ретрите — <em>один раз всей группе за три дня</em>`, who: "Максим",
       note: `` },
 
     { t: "big", eyebrow: "Если у вас уже есть клиенты",
@@ -873,7 +875,7 @@
       h: `После ретрита ведущей <em>не нужна неделя, чтобы прийти в себя</em> — это часть методики`, who: "Мария",
       note: `` },
 
-    { t: "act", alt: true, eyebrow: "Небольшая практика прямо сейчас",
+    { pic: true, t: "act", alt: true, eyebrow: "Небольшая практика прямо сейчас",
       h: `2 минуты: <em>снять роли</em> и вернуться в тело`, who: "Мария",
       note: ``,
       dir: `` },
@@ -948,7 +950,7 @@
       h: `Сначала <em>интерес и предоплаты</em> — потом крупные траты`, who: "Максим",
       note: `` },
 
-    { t: "stat", alt: true, eyebrow: "Первый ретрит не обязан быть большим",
+    { pic: true, t: "stat", alt: true, eyebrow: "Первый ретрит не обязан быть большим",
       value: `5–10`, caption: `своих людей достаточно, чтобы начать`, who: "Мария",
       note: `` },
 
@@ -977,7 +979,7 @@
       items: [`Составьте список тех, кому вы сами предложили бы этот опыт`, `Напишите каждому отдельно: почему подумали именно о нём`, `Скажите, какой результат он увезёт и что группа будет маленькой`, `Не рассылайте афишу — она не работает там, где есть личное доверие`], tight: true, who: "Максим",
       note: `` },
 
-    { t: "chips", eyebrow: "Канал 2: живые знакомства", h: `Идите туда, где эти люди уже собираются`,
+    { pic: true, t: "chips", eyebrow: "Канал 2: живые знакомства", h: `Идите туда, где эти люди уже собираются`,
       chips: [`Йога`, `женские встречи`, `клубы`, `мамские сообщества`, `профессиональные события`], who: "Максим",
       note: `` },
 
@@ -1010,7 +1012,7 @@
       steps: [`40 личных диалогов`, `15 заинтересованных`, `5–7 участников`], who: "Максим",
       note: `` },
 
-    { t: "saying", eyebrow: "Самый тихий страх",
+    { pic: true, t: "saying", eyebrow: "Самый тихий страх",
       quote: `«А имею ли я право вести людей?»`, source: "", who: "Мария",
       note: `` },
 
@@ -1022,15 +1024,11 @@
       h: `Вы получаете методику, программу, практику ведения, <em>систему набора группы</em> и чек-листы по организации`, who: "Мария",
       note: `` },
 
-    { t: "big", eyebrow: "Если вы хотите вести, а не организовывать",
-      h: `Ведите людей, а организацию отдайте — <em>найдите себе организатора</em>`, who: "Максим",
-      note: `` },
-
     { t: "chain", alt: true, pic: true, eyebrow: "Не набор практик, а маршрут", h: `Каждый этап готовит следующий`,
       steps: [`Снятие ролей`, `заземление`, `открытие сердца`, `размягчение ума`, `возвращение к себе`], who: "Мария",
       note: `` },
 
-    { t: "big", eyebrow: "Глубина программы",
+    { pic: true, t: "big", eyebrow: "Глубина программы",
       h: `Один маршрут разворачивается <em>в один, три или пять дней</em>`, who: "Мария",
       note: `` },
 
@@ -1047,7 +1045,7 @@
       note: ``,
       dir: `` },
 
-    { t: "chips", alt: true, eyebrow: "Что ИИ не заменит", h: `То, ради чего люди приезжают`,
+    { pic: true, t: "chips", alt: true, eyebrow: "Что ИИ не заменит", h: `То, ради чего люди приезжают`,
       chips: [`Ваше присутствие`, `доверие`, `ответственность`, `контакт с группой`], who: "Мария",
       note: `` },
 
@@ -1056,7 +1054,7 @@
       note: ``,
       dir: `` },
 
-    { t: "big", alt: true, eyebrow: "Мастер восстановительных ретритов",
+    { pic: true, t: "big", alt: true, eyebrow: "Мастер восстановительных ретритов",
       h: `Здесь не рассказывают про ретриты — <em>здесь вы собираете свой</em>`, who: "Мария",
       note: `` },
 
@@ -1089,7 +1087,7 @@
       items: [`Программа ретрита на 1, 3 или 5 дней`, `Организационный чек-лист`, `Бюджет и точка безубыточности`, `Анкеты, welcome-письма и договорная основа`, `Система набора группы`, `Настроенные под ваши задачи ИИ-помощники`, `Закрытое сообщество`], tight: true, who: "Максим",
       note: `` },
 
-    { t: "big", alt: true, eyebrow: "Поддержка и защита проекта",
+    { pic: true, t: "big", alt: true, eyebrow: "Поддержка и защита проекта",
       h: `Вы не сдаёте тест на память. Вы <em>защищаете свой ретрит</em>`, who: "Мария",
       note: ``,
       dir: `` },
@@ -1241,7 +1239,7 @@
     const n = i + 1;
     const kind = ["title", "big", "act", "saying", "stat"].includes(s.t) ? s.t :
       ["chain", "chips", "formula", "asks", "cols"].includes(s.t) ? "mid" : "";
-    return `<section class="slide ${kind}${s.alt ? " is-alt" : ""}${s.pic ? " withpic" : ""}" aria-label="Слайд ${n}">
+    return `<section class="slide ${kind}${s.alt ? " is-alt" : ""}${s.pic ? " withpic" : ""}" data-idx="${i}" aria-label="Слайд ${n}">
       <div class="pane">
         <div class="body">
           ${s.eyebrow ? `<p class="eyebrow">${esc(s.eyebrow)}</p>` : ""}
@@ -1295,7 +1293,8 @@
   ].join(", ");
 
   // Восстанавливаем сохранённые слайды до первого замера подгонки
-  deck.querySelectorAll(".slide").forEach((slide, i) => {
+  deck.querySelectorAll(".slide").forEach((slide) => {
+    const i = Number(slide.dataset.idx);
     const saved = store["s" + i];
     if (!saved) return;
     const pane = slide.querySelector(".pane");
@@ -1330,7 +1329,23 @@
 
   // ── Навигация ─────────────────────────────
 
-  const slides = [...deck.querySelectorAll(".slide")];
+  let slides = [...deck.querySelectorAll(".slide")];
+  const dataOf = (pos) => S[Number(slides[pos]?.dataset.idx)];
+
+  // Удалённые слайды хранятся по номеру в сценарии, поэтому
+  // правки и удаления не съезжают, когда презентация меняется
+  function applyDeleted() {
+    const gone = new Set(store.del || []);
+    deck.querySelectorAll(".slide").forEach((slide) => {
+      if (gone.has(Number(slide.dataset.idx))) slide.remove();
+    });
+    slides = [...deck.querySelectorAll(".slide")];
+    document.getElementById("total").textContent = String(slides.length);
+    jump.innerHTML = slides.map((slide, pos) => {
+      const d = S[Number(slide.dataset.idx)];
+      return `<option value="${pos}">${String(pos + 1).padStart(2, "0")} · ${esc(d.eyebrow || d.h || "слайд")}</option>`;
+    }).join("");
+  }
   const now = document.getElementById("now");
   const nBody = document.getElementById("notes-body");
   const nDir = document.getElementById("notes-dir");
@@ -1344,7 +1359,7 @@
     showing() ? shown : Math.round(deck.scrollLeft / (deck.scrollWidth / slides.length));
 
   function show(i) {
-    const s = S[i];
+    const s = dataOf(i);
     if (!s) return;
     shown = i;
     now.textContent = i + 1;
@@ -1431,6 +1446,7 @@
     saveEditsBtn.hidden = !on;
     loadEditsBtn.hidden = !on;
     updatePic();
+    updateDropButtons();
     deck.querySelectorAll(EDITABLE).forEach((el) => {
       if (on) el.setAttribute("contenteditable", "true");
       else el.removeAttribute("contenteditable");
@@ -1445,8 +1461,8 @@
   let pending = 0;
 
   function persist(slide) {
-    const i = slides.indexOf(slide);
-    if (i < 0) return;
+    const i = Number(slide.dataset.idx);
+    if (Number.isNaN(i)) return;
     const pane = slide.querySelector(".pane");
     const clone = pane.cloneNode(true);
     clone.querySelectorAll("[contenteditable]").forEach((el) => el.removeAttribute("contenteditable"));
@@ -1462,8 +1478,9 @@
   });
 
   nBody.addEventListener("input", () => {
-    const i = current();
-    S[i].note = nBody.textContent;
+    const i = Number(slides[current()]?.dataset.idx);
+    if (Number.isNaN(i)) return;
+    dataOf(current()).note = nBody.textContent;
     store["n" + i] = nBody.textContent;
     clearTimeout(pending);
     pending = setTimeout(save, 400);
@@ -1600,7 +1617,7 @@
     const slot = slide.querySelector(".slot");
     if (!slot) return;
     const img = slot.querySelector("img.shot");
-    if (S[shown]?.pic) {
+    if (dataOf(shown)?.pic) {
       img.removeAttribute("src");
       slot.setAttribute("data-empty", "1");
     } else {
@@ -1621,6 +1638,36 @@
   // В публичной версии заметки спикера и пометки команде не показываем
   const SHOW_NOTES = false;
 
+  // ── Удаление слайда: обратимое ───────────
+
+  const dropSlideBtn = document.getElementById("drop-slide");
+  const restoreBtn = document.getElementById("restore-slides");
+
+  dropSlideBtn.addEventListener("click", () => {
+    const slide = slides[shown];
+    if (!slide || slides.length < 2) return;
+    store.del = [...new Set([...(store.del || []), Number(slide.dataset.idx)])];
+    save();
+    const pos = Math.min(shown, slides.length - 2);
+    applyDeleted();
+    goTo(pos);
+    fit();
+    updateDropButtons();
+  });
+
+  restoreBtn.addEventListener("click", () => {
+    delete store.del;
+    save();
+    location.reload();
+  });
+
+  function updateDropButtons() {
+    const on = editing;
+    dropSlideBtn.hidden = !on;
+    restoreBtn.hidden = !on || !(store.del || []).length;
+    restoreBtn.textContent = `Вернуть удалённые (${(store.del || []).length})`;
+  }
+
   const notes = document.getElementById("notes");
   const notesToggle = document.getElementById("notes-toggle");
 
@@ -1636,6 +1683,8 @@
     saveEditsBtn.remove();
     loadEditsBtn.remove();
     loadFile.remove();
+    dropSlideBtn.remove();
+    restoreBtn.remove();
     document.getElementById("hint").textContent =
       "Листайте стрелками, кнопками или списком слайдов. «Показ» разворачивает слайд на всё окно: листать стрелками, пробелом или кликом, выход по Esc. «PDF» сохраняет все слайды страницами 1280×720 — в диалоге печати включите фоновую графику.";
   }
@@ -1679,6 +1728,7 @@
 
   document.getElementById("pdf").addEventListener("click", () => window.print());
 
+  applyDeleted();
   show(0);
   fit();
   window.addEventListener("resize", fit);
