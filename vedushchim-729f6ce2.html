@@ -814,6 +814,7 @@
     <button type="button" id="refresh-text" hidden>Обновить текст, сохранив фото</button>
     <input type="file" id="pic-file" accept="image/*" hidden>
     <button type="button" id="save-edits" hidden>Сохранить правки в файл</button>
+    <button type="button" id="save-deck" hidden>Скачать презентацию с фото</button>
     <button type="button" id="load-edits" hidden>Загрузить правки</button>
     <input type="file" id="load-file" accept="application/json,.json" hidden>
     <button type="button" id="reset" hidden>Сбросить правки</button>
@@ -1391,7 +1392,11 @@
     if (Array.isArray(store.del)) {
       store.del = store.del.map((i) => (typeof i === "number" ? S[i]?.id : i)).filter(Boolean);
     }
-    if (moved) console.info("правки перенесены на постоянные номера:", moved);
+    if (moved) {
+      try {
+        shelf?.setItem(KEY, JSON.stringify(store));
+      } catch {}
+    }
   })();
 
   function save() {
@@ -1585,6 +1590,7 @@
     resetBtn.hidden = !on;
     picBtn.hidden = !on;
     saveEditsBtn.hidden = !on;
+    saveDeckBtn.hidden = !on;
     loadEditsBtn.hidden = !on;
     updatePic();
     updateDropButtons();
@@ -1670,6 +1676,33 @@
   }
 
   saveEditsBtn.addEventListener("click", () => downloadEdits("правки-презентации.json"));
+
+  // Готовый файл презентации со вшитыми фото и правками:
+  // его можно открыть на любом компьютере и передать мне для публикации
+  const saveDeckBtn = document.getElementById("save-deck");
+
+  saveDeckBtn.addEventListener("click", () => {
+    const copy = document.documentElement.cloneNode(true);
+    copy.querySelectorAll(".bar, .notes, #leave, #hint").forEach((el) => el.remove());
+    copy.querySelectorAll("[contenteditable]").forEach((el) => el.removeAttribute("contenteditable"));
+
+    let html = "<!doctype html>\n" + copy.outerHTML;
+    // снимок фиксируем: при открытии файл не подтягивает правки из браузера
+    html = html.replace(
+      'const store = JSON.parse(shelf?.getItem(KEY) || "{}");',
+      "const store = {}; // снимок презентации: правки и фото уже внутри файла"
+    );
+
+    const blob = new Blob([html], { type: "text/html" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "презентация-с-фото.html";
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 8000);
+
+    document.getElementById("hint").innerHTML =
+      "Файл <b>презентация-с-фото.html</b> лежит в «Загрузках». Пришлите его мне — я опубликую его как общую версию, и фото больше никуда не денутся.";
+  });
 
   loadEditsBtn.addEventListener("click", () => loadFile.click());
 
@@ -1875,6 +1908,7 @@
     picDrop.remove();
     picFile.remove();
     saveEditsBtn.remove();
+    saveDeckBtn.remove();
     loadEditsBtn.remove();
     loadFile.remove();
     dropSlideBtn.remove();
