@@ -142,7 +142,7 @@
     --u: calc(1cqw * var(--fit, 1));
     flex: 1;
     min-width: 0;
-    padding: calc(5.6 * var(--u)) calc(6 * var(--u)) calc(4.4 * var(--u));
+    padding: 5.6cqw 6cqw 4.4cqw;
     display: flex;
     flex-direction: column;
   }
@@ -669,13 +669,13 @@
   .slide.withpic .pane {
     flex-direction: row;
     align-items: stretch;
-    gap: calc(4 * var(--u));
+    gap: 4cqw;
   }
 
   .slide.withpic .body { min-width: 0; }
 
   .slot {
-    flex: 0 0 40%;
+    flex: 0 0 34%;
     align-self: stretch;
     /* Без этого своя ширина картинки перебивает заданные 40% */
     min-width: 0;
@@ -1424,7 +1424,7 @@
       pane.style.removeProperty("--fit");
 
       if (!over() && roomy()) {
-        while (k < 1.7) {
+        while (k < 2.8) {
           const next = Math.round((k + 0.04) * 100) / 100;
           pane.style.setProperty("--fit", String(next));
           if (over() || !roomy()) {
