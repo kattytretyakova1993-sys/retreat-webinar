@@ -786,6 +786,7 @@
     <button type="button" id="pic-drop" hidden>Убрать фото</button>
     <button type="button" id="drop-slide" hidden>Удалить слайд</button>
     <button type="button" id="restore-slides" hidden>Вернуть удалённые</button>
+    <button type="button" id="refresh-text" hidden>Обновить текст, сохранив фото</button>
     <input type="file" id="pic-file" accept="image/*" hidden>
     <button type="button" id="save-edits" hidden>Сохранить правки в файл</button>
     <button type="button" id="load-edits" hidden>Загрузить правки</button>
@@ -858,7 +859,7 @@
       note: `` },
 
     { t: "big", eyebrow: "Если вы только начинаете",
-      h: `Не нужно быть гуру. Можно вести <em>готовую методику</em>`, who: "Максим",
+      h: `Не нужно быть экспертом. Можно вести <em>готовую методику</em>`, who: "Максим",
       note: `` },
 
     { t: "big", alt: true, eyebrow: "Не учиться, а собрать",
@@ -877,8 +878,8 @@
       h: `Хороший ретрит <em>не должен выжигать ведущую</em>`, who: "Мария",
       note: `` },
 
-    { t: "list", pic: true, eyebrow: "С чем мы работаем на ретрите", h: `Восстановительный ретрит работает <em>с тонким телом</em>`,
-      items: [`Грубое тело — это мышцы, сон и еда. Тонкое тело — дыхание, внимание, эмоции и скорость мыслей`, `Усталость живёт не в графике, а в теле: в дыхании, в челюсти, в спине, в привычке всё держать`, `Отпуск снимает усталость на неделю. Ретрит меняет то, как человек дышит, чувствует и реагирует`, `Поэтому результат уезжает вместе с человеком, а не заканчивается вместе с поездкой`], tight: true, who: "Мария",
+    { t: "list", numbered: true, pic: true, eyebrow: "Что такое тонкое тело", h: `Внутри нас пять слоёв — и усталость живёт <em>не в первом</em>`,
+      items: [`Физическое тело — самый плотный слой`, `Глубже — дыхание`, `Под дыханием — внутренние ветра, прана`, `Ещё глубже — мысли`, `В самой глубине — семена наших прошлых поступков`], tight: true, who: "Мария",
       note: ``,
       dir: `` },
 
@@ -1317,6 +1318,26 @@
     if (store["n" + i] !== undefined) s.note = store["n" + i];
   });
 
+  // Фотографии живут отдельно от текста: тогда обновление
+  // презентации не стирает вставленные снимки и наоборот
+  function putPhoto(slide, dataUrl) {
+    let slot = slide.querySelector(".slot");
+    if (!slot) {
+      slot = document.createElement("div");
+      slot.className = "slot";
+      slot.innerHTML = `<span class="waiting">Здесь будет фото</span><img class="shot" alt="Фотография на слайде">`;
+      slide.querySelector(".pane").appendChild(slot);
+    }
+    slot.querySelector("img.shot").src = dataUrl;
+    slot.removeAttribute("data-empty");
+    slide.classList.add("withpic");
+  }
+
+  deck.querySelectorAll(".slide").forEach((slide) => {
+    const saved = store["pic" + Number(slide.dataset.idx)];
+    if (saved) putPhoto(slide, saved);
+  });
+
   // ── Подгонка: ужимаем слайд, если текст не влез ──
   // Пропорции сохраняются, поэтому коэффициент верен
   // и для показа на весь экран, и для печати.
@@ -1615,7 +1636,8 @@
     slot.removeAttribute("data-empty");
     slide.classList.add("withpic");
     await img.decode().catch(() => {});
-    persist(slide);
+    store["pic" + Number(slide.dataset.idx)] = img.src;
+    save();
     fit();
     updatePic();
   });
@@ -1634,7 +1656,8 @@
       slot.remove();
       slide.classList.remove("withpic");
     }
-    persist(slide);
+    delete store["pic" + Number(slide.dataset.idx)];
+    save();
     fit();
     updatePic();
   });
@@ -1671,7 +1694,26 @@
     location.reload();
   });
 
+  const refreshBtn = document.getElementById("refresh-text");
+
+  // Переносим фото из старых записей и стираем сохранённый текст,
+  // чтобы слайды подтянули актуальные формулировки
+  refreshBtn.addEventListener("click", () => {
+    Object.keys(store).forEach((key) => {
+      if (!key.startsWith("s")) return;
+      const idx = key.slice(1);
+      const box = document.createElement("div");
+      box.innerHTML = store[key];
+      const src = box.querySelector("img.shot")?.getAttribute("src");
+      if (src) store["pic" + idx] = src;
+      delete store[key];
+    });
+    save();
+    location.reload();
+  });
+
   function updateDropButtons() {
+    refreshBtn.hidden = !editing;
     const on = editing;
     dropSlideBtn.hidden = !on;
     restoreBtn.hidden = !on || !(store.del || []).length;
@@ -1695,6 +1737,7 @@
     loadFile.remove();
     dropSlideBtn.remove();
     restoreBtn.remove();
+    refreshBtn.remove();
     document.getElementById("hint").textContent =
       "Листайте стрелками, кнопками или списком слайдов. «Показ» разворачивает слайд на всё окно: листать стрелками, пробелом или кликом, выход по Esc. «PDF» сохраняет все слайды страницами 1280×720 — в диалоге печати включите фоновую графику.";
   }
